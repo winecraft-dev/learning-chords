@@ -1,44 +1,49 @@
 package main
 
 import (
-	"fmt"
-	"time"
+	"log"
 
-	"gitlab.com/gomidi/midi/v2"
-
-	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
+	"github.com/hajimehoshi/ebiten/v2"
+	"winecraft.dev/learning-chords/mididriver"
+	"winecraft.dev/learning-chords/piano"
 )
 
 func main() {
-	defer midi.CloseDriver()
+	driver := mididriver.NewMIDIDriver()
+	piano := piano.NewPiano()
 
-	fmt.Printf("%v\n", midi.GetInPorts())
-
-	in, err := midi.FindInPort("Digital Piano")
-	if err != nil {
-		fmt.Println("can't find VMPK")
-		return
+	learner := Learner{
+		driver,
+		piano,
 	}
 
-	stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
-		var bt []byte
-		var ch, key, vel uint8
-		switch {
-		case msg.GetSysEx(&bt):
-			fmt.Printf("got sysex: % X\n", bt)
-		case msg.GetNoteStart(&ch, &key, &vel):
-			fmt.Printf("starting note %v on channel %v with velocity %v\n", key, ch, vel)
-		case msg.GetNoteEnd(&ch, &key):
-			fmt.Printf("ending note %v", key)
-		}
-	}, midi.UseSysEx())
+	driver.StartListening()
 
-	if err != nil {
-		fmt.Printf("Error: %s\n", err)
-		return
+	ebiten.SetWindowSize(1200, 300)
+	ebiten.SetWindowTitle("Learning Chords")
+	if err := ebiten.RunGame(&learner); err != nil {
+		log.Fatalln(err)
 	}
 
-	time.Sleep(time.Second * 5)
+	driver.StopListening()
+}
 
-	stop()
+type Learner struct {
+	driver *mididriver.MIDIDriver
+	piano  *piano.Piano
+}
+
+func (l *Learner) Update() error {
+	return nil
+}
+
+func (l *Learner) Draw(screen *ebiten.Image) {
+	piano := l.piano
+
+	image := screen.SubImage(piano.Layout(screen.Bounds())).(*ebiten.Image)
+	piano.Draw(image)
+}
+
+func (l *Learner) Layout(ow, oh int) (int, int) {
+	return ow, oh
 }
