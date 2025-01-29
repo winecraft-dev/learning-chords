@@ -1,61 +1,82 @@
 package piano
 
 import (
+	"fmt"
 	"image"
-	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-const KEYS = 88
-const WHITE_KEYS = 56
-const WHITE_KEYS_OCTAVE = 7
-const KEY_PADDING = 2
-const BLACK_SLOTS_OCTAVE = 12
-const BLACK_SLOTS = WHITE_KEYS / WHITE_KEYS_OCTAVE * BLACK_SLOTS_OCTAVE
-const HEIGHT_RATIO = 5 / float64(WHITE_KEYS)
-
 type Piano struct {
+	keys map[uint8]Key
+
+	whiteKeys []uint8
+	blackKeys []uint8
 }
 
 func NewPiano() *Piano {
-	return &Piano{}
+	keys := make(map[uint8]Key)
+	whiteKeys := make([]uint8, WHITE_KEYS)
+	blackKeys := make([]uint8, KEYS-WHITE_KEYS)
+
+	for i := 0; i < KEYS; i++ {
+		var code = uint8(i + 9)
+		var color KeyColor
+		switch code % BLACK_SLOTS_OCTAVE {
+		case 0, 2, 3, 5, 7, 8, 10:
+			color = KeyColorWhite
+			whiteKeys = append(whiteKeys, code)
+		case 1, 4, 6, 9, 11:
+			color = KeyColorBlack
+			blackKeys = append(blackKeys, code)
+		}
+
+		keys[code] = Key{
+			octave: uint8(code / BLACK_SLOTS_OCTAVE),
+			key:    uint8(code % BLACK_SLOTS_OCTAVE),
+			code:   code,
+			color:  color,
+		}
+	}
+
+	return &Piano{
+		keys:      keys,
+		whiteKeys: whiteKeys,
+		blackKeys: blackKeys,
+	}
 }
 
 func (p *Piano) Draw(canvas *ebiten.Image) {
-	width := canvas.Bounds().Dx()
-	height := canvas.Bounds().Dy()
-
-	wkw := float64(width) / float64(WHITE_KEYS)
-	wkh := float64(height)
+	white, black, ww, bw := generateKeyImages(canvas.Bounds())
+	fmt.Println(ww, bw)
 
 	for i := 0; i < WHITE_KEYS; i++ {
-		key := ebiten.NewImage(int(wkw-KEY_PADDING), int(wkh))
-		key.Fill(color.White)
+		key := p.keys[p.whiteKeys[i]]
+
+		switch key.state {
+
+		}
 
 		opts := ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(wkw*float64(i), 0)
+		opts.GeoM.Translate(ww*float64(i), 0)
 
-		canvas.DrawImage(key, &opts)
+		canvas.DrawImage(white, &opts)
 	}
 
-	bkw := float64(width) / float64(BLACK_SLOTS)
-	bkh := float64(height) / 5 * 3
-	for i := 0; i < BLACK_SLOTS; i++ {
+	for i, b := 0, 0; b < KEYS-WHITE_KEYS; i++ {
 		switch i % BLACK_SLOTS_OCTAVE {
-		//case 1, 3, 6, 8, 10
-		//	continue
-		case 0, 2, 4, 5, 7, 9, 11:
+		case 0, 2, 3, 5, 7, 8, 10:
 			continue
 		}
-		key := ebiten.NewImage(int(bkw-KEY_PADDING), int(bkh))
-		key.Fill(color.Black)
 
 		opts := ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(bkw*float64(i), 0)
+		opts.GeoM.Translate(bw*float64(i)+bw*4.0/12.0, 0)
 
-		canvas.DrawImage(key, &opts)
+		canvas.DrawImage(black, &opts)
+
+		b++
 	}
+
 }
 
 func (p *Piano) Layout(r image.Rectangle) image.Rectangle {

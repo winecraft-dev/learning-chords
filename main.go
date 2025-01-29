@@ -9,15 +9,13 @@ import (
 )
 
 func main() {
-	driver := mididriver.NewMIDIDriver()
+	//driver := mididriver.NewMIDIDriver()
 	piano := piano.NewPiano()
 
 	learner := Learner{
-		driver,
-		piano,
+		driver: nil,
+		piano:  piano,
 	}
-
-	driver.StartListening()
 
 	ebiten.SetWindowSize(1200, 300)
 	ebiten.SetWindowTitle("Learning Chords")
@@ -25,7 +23,6 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	driver.StopListening()
 }
 
 type Learner struct {
